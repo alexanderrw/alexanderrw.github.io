@@ -300,3 +300,118 @@ If this project were to be completed again, hyperparameter tuning would have bee
 Ideally, a clear goal or question to answer would have been stated in the planning stage.
 
 ## Ingestion of Listed Building Data
+
+This was a data engineering project surrounding the collation of information about every "listed" building of every country in the UK into one table, as part of a wider effort towards building a machine learning model.
+A "listed" building is one that, at any level, is protected by the government of the country in which it resides.
+The main data points to collect were a descriptions and co-ordinates of each listing.
+
+### Challenges
+
+#### Alignment
+
+Each country stores this data in a different location and a different format to each other country.
+The common theme is that they all store basic information about each building and its coordinates in a dataset that is available for public download, henceforth referred to as the "spatial dataset".
+Separately, they each have websites with individual pages for each building, which contain text descriptions, which will be referred to as "description pages".
+
+While Scotland's spatial dataset is accessed through a static link, Northern Ireland has a link that changes monthly, and England and Wales have web APIs.
+All countries have this data in GeoJSON, but some choose to compress it into various formats of ZIP files.
+In these datasets, the local "easting and northing" coordinate reference systems (CRS) of each country are used, which need to be projected to the global latitude and longitude system.
+
+In some spatial datasets, a "link" column contains a hyperlink to each listing's description page.
+In others, the "ID" column can be used to generate that hyperlink.
+For Northern Ireland, neither of these things are true, and it's "ID" column needs to be passed through a web form to generate a separate ID which is the basis for the hyperlink.
+No countries use any of the same column names in their spatial data.
+
+#### Time
+
+With the concerns around formatting the spatial dataset and getting links to each description page aside, web-scraping all descriptions is extremely time-consuming.
+Individual web pages for each listing need to be queried, waiting for the webserver to send back the entire page before finding the description within it.
+While the webservers for England and Wales description pages are reasonably quick and can handle many concurrent requests, the same cannot be said for Scotland and Northern Ireland.
+If too many requests are sent to any of the webservers, errors or unexpected response data will be returned, which needs to be accounted for.
+
+As a result, description pages for each country should be queried separately yet concurrently, scraping only as many descriptions at as each country's webservers can handle at any given time.
+To add complexity, all information from each scraping process must be regularly consolidated into one format, preserving data in case of either a crash of web-scraper or maintenance of webserver.
+
+The solution for this project needed to be capable not just of creating the table, but of updating it with the latest listings without creating duplicates or re-creating the entire dataset from scratch.
+
+### Solution
+
+The final solution was written in Python and ran through Databricks, writing to a Delta Lake table.
+The Delta Lake format preserves history, allowing for a rollback if anything went awry.
+
+#### Spatial Datasets
+
+The solution made use of asynchronous programming, allowing it to wait on the network for many requests simultaneously, processing each file as it arrives.
+Each dataset is downloaded directly into memory, as reading and writing from disk is time-consuming.
+
+Two packages that were heavily utilised at this stage were Fiona and GeoPandas.
+Fiona can quickly detect and handle many file formats, and is capable of loading them into GeoDataFrames, which are GeoPandas objects that manage tabular spatial data.
+Due to awkward ZIP formats of some files, certain compressed files had to be moved from folder to folder whilst still within an in-memory ZIP file before being passed to Fiona, implemented similar to:
+
+```python
+def _normalise_zip_file(zip_file: bytes) -> bytes:
+    bytestream = io.BytesIO(zip_file)
+    assert zipfile.is_zipfile(bytestream)
+
+    with zipfile.ZipFile(bytestream) as zip_object:
+        if not any(["/" in info.filename for info in zip_object.infolist()]):
+            return zip_file
+
+        compressed_files = []
+        for info in zip_object.infolist():
+            with zip_object.open(info) as inner_file:
+                compressed_files.append(
+                    CompressedFile(metadata=info, content=inner_file.read())
+                )
+
+    with zipfile.ZipFile(bytestream, "w") as zip_object:
+        for compressed_file in compressed_files:
+            compressed_file.metadata.filename = (
+                compressed_file.metadata.filename.split("/")[-1]
+            )
+            zip_object.writestr(compressed_file.metadata, compressed_file.content)
+
+    new_zip_file = bytestream.getvalue()
+
+    return new_zip_file
+```
+
+This utilises a custom `CompressedFile` type for retaining the metadata and contents of each archived file.
+
+Once in GeoDataFrames, the coordinates of each listing were set to latitude and longitude, and the column names were normalised according to a schema.
+Where needed, specific functions are called to generate description page hyperlinks out of ID columns.
+For Northern Ireland, the IDs necessary to generate hyperlinks are retrieved 10-at-a-time and cached to limit use of the web form in future runs.
+
+Listings then need to be checked to see if they require a description to be scraped.
+Each entry in the spatial data provides both a listing date, and the date that it was last amended.
+The solution also provides a date of when the description for each listing was last scraped to the final table.
+If a listing exists in the spatial dataset, but not in the final table, or a listing/amendment date is more recent than the scrape date, a description for that listing should be retrieved.
+
+#### Description Scraping
+
+A system is used to dynamically change the number of descriptions that are scraped at a time for each country.
+Each country had a separate batch sizes to cater to the capabilities of their respective webservers.
+On each batch, sizes would reduce if either the rate of error or average time per request passed a certain threshold, and would increase otherwise.
+This system would also continuously evaluate which batch sizes it had tried, and adjust to the one with the quickest average time per request.
+
+Scraping was paused every 10 minutes, when each scraped description is joined to its appropriate listing in the final table.
+There remained the possibility that one of the description page webserver would to crash for long enough that scraping could not be synchronised between countries
+In this situation, we do not want to lose all progress.
+It would be a future consideration to ensure that there is no condition in which the program would crash.
+
+After this stage, it is re-evaluated which descriptions that need to be scraped, and the scraping process begins again.
+When there are no descriptions left to scrape, the program exits.
+
+### Business Value
+
+#### Time
+
+There are many ways in which this project has saved months of time.
+It replaces a solution which was built according to the formats that existed at the time.
+Its design is quickly adaptable to changing data types and formats.
+This means that if formats change, it would be significantly quicker to modify this solution and maintain the process.
+Additionally, the old solution did not make use of concurrency or progressive updates, taking weeks at a time to generate a dataset that must be re-created from scratch if listings change.
+
+#### Money
+
+While there is no confirmed cost save, this solution was developed internally, preventing the organisation from paying a software consultancy or contractor for a solution.
