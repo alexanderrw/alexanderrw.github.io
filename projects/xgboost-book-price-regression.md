@@ -61,8 +61,9 @@ The public classes, methods, and attributes of each submodule are accessible ins
 
 #### Feature extraction
 
-The first stage of processing was to extract and normalise features that were combined in the original data.
-The dataset was loaded into the project through a package called Pandas.
+The dataset is loaded into the project through a package called Pandas.
 Pandas is an open-source library for handling and processing tabular data, and is among the most popular libraries used by data scientists ([Source: DataCamp](https://www.datacamp.com/blog/top-python-libraries-for-data-science)).
+Like XGBoost, it was chosen for its stability, documentation, and ease-of-use.
 
-
+The first stage of processing is to extract and normalise features that were combined in the original data.
+The most important column to format correctly is the the target column.
