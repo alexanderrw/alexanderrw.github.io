@@ -10,7 +10,9 @@
 This project was an experiment, using XGBoost and a publicly available dataset to predict the price of a book given some characteristics.
 The main intention of this project was to explore machine learning techniques, including data cleaning and model explainability.
 
-### Motivation: Data Source
+### Motivation
+
+#### Data Source
 
 The data for this project was sourced from [Kaggle](https://www.kaggle.com/datasets/die9origephit/amazon-data-science-books), a repository of publicly available datasets for machine learning and exploration.
 It comes in the format of a comma-separated values (CSV) file, and is a table which contains information about listings for 830 different books on Data Science that are being sold on Amazon.
@@ -28,7 +30,7 @@ Feature engineering is an umbrella term for preparing data for a machine learnin
 Enrichment differs from feature extraction in that instead of features of the raw data being transformed, they are instead used as a form of key to help join on features from external sources ([Source: Alteryx](https://www.alteryx.com/glossary/data-enrichment)).
 In this case, enrichment would involve scraping and processing data from the provided listing link to use as features.
 
-### Motivation: Why XGBoost?
+#### Why XGBoost?
 
 XGBoost, short for Extreme Gradient Boosting, is an open-source machine learning algorithm based on the concept of decision trees.
 In short, it is a highly efficient and accurate algorithm ([Source: Armand Ruiz](https://www.nocode.ai/why-xgboost-is-so-popular-among-data-scientists/)) for multiple machine learning tasks, including regression and classification, that has gained significant popularity over recent years.
@@ -41,7 +43,9 @@ It is a common problem with other models that categorical variables need to be e
 One-hot encoding can create issues in machine learning models, as it can cause over-fitting, which is where a model performs well on its training data but proves unsuitable when tested on real-world data.
 Avoiding over-fitting is key to developing a good model, so categorical variable support could prove invaluable.
 
-### Implementation: File Structure
+### Implementation
+
+#### File Structure
 
 The first stage of any project is to create the file structure.
 For this project, the following file structure was chosen:
@@ -65,7 +69,7 @@ For example, `main.py` is commonly used to designate the main script, which is t
 Additionally, naming specific module files with a leading underscore `_` is a hint to the user that they are private, and should not be imported from directly.
 The public classes, methods, and attributes of each submodule are accessible instead from their `__init__.py` script.
 
-### Implementation: Feature Extraction
+#### Feature Extraction
 
 The dataset is loaded into the project through a package called Pandas.
 Pandas is an open-source library for handling and processing tabular data, and is among the most popular libraries used by data scientists ([Source: DataCamp](https://www.datacamp.com/blog/top-python-libraries-for-data-science)).
@@ -197,7 +201,7 @@ def _get_weight_in_kilograms(__row: pd.Series) -> Optional[float]:
 
 It is important to identify and remedy data quality issues such as varying units, as they can have significant impacts on model outputs.
 
-### Implementation: Null Processing
+#### Null Processing
 
 Dealing with nulls is important when working with datasets for all machine learning models.
 Particularly when working with smaller datasets, it is vital to accurately preserve the information of each data point to produce the most accurate model.
@@ -234,7 +238,7 @@ def _interpolate_weight_by_average_density_in_place(dataset: pd.DataFrame) -> No
 
 Another example of interpolation is the inference of unknown `depth` values from a known `number_of_pages` and vice versa, making the assumption that pages are fairly consistent in thickness.
 
-### Implementation: Feature Engineering
+#### Feature Engineering
 
 Due to time constraints, the feature engineering that took place within this project was limited.
 Originally, the `publisher` feature was planned to be categorical.
@@ -266,7 +270,7 @@ Future efforts to enrich this dataset with features would include:
 
 Data enrichment can provide key information that helps a model make more accurate evaluations, in the same way that a human would need to research information about a topic before a decision.
 
-### Implementation: Training
+#### Training
 
 When training a model, appropriate parameters must be selected to optimise model performance.
 One of these parameters is the objective function.
@@ -276,7 +280,7 @@ For this model, root-mean-squared error was chosen.
 This function is common in supervised learning models, and is good at reducing occasional occurrences of very bad predictions ([Source: C3](https://c3.ai/glossary/data-science/root-mean-square-error-rmse/)).
 When there is little data to work with, this can make a big difference in the outcome.
 
-### Implementation: Explainability
+#### Explainability
 
 One of the key pieces of information to know about a machine learning model is how it gets to its answers.
 More specifically, it is key to know which of its features it relies upon the most when making predictions.
