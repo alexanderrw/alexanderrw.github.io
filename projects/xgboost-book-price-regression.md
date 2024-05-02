@@ -33,7 +33,33 @@ This has lead to high-quality official documentation, and an easy-to-use Python 
 
 ## Implementation
 
-### Feature Extraction
+### File Structure
 
-The first stage of processing this data was to extract and normalise features that were combined.
+The first stage of any project is to create the file structure.
+For this project, the following file structure was chosen:
+
+```
+.
+└── project/
+    ├── price_model/
+    │   ├── __init__.py
+    │   ├── _model.py
+    │   └── _features/
+    │       ├── __init__.py
+    │       ├── _feature_extraction.py
+    │       ├── _null_processing.py
+    │       └── _feature_engineering.py
+    └── main.py
+```
+
+It was a conscious decision to follow the name conventions of Python projects.
+For example, `main.py` is commonly used to designate the main script, which is to be run by the user.
+Additionally, naming specific module files with a leading underscore `_` is a hint to the user that they are private, and should not be imported from directly.
+The public classes, methods, and attributes of each submodule are accessible instead from their `__init__.py` script.
+
+### Code
+
+#### Feature extraction
+
+The first stage of processing was to extract and normalise features that were combined in the original data.
 
